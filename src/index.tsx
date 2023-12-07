@@ -87,36 +87,92 @@ const todoEvent = () => {
 
   const ADD_TODO = "ADD_TODO";
   const DELETE_TODO = "DELETE_TODO";
-
-  const reducer = (state=[], action:any)=>{
+  
+  const reducer = (state:Array<Object>=[], action:any)=>{
+    console.log(state)
     // console.log(action) // type , text -> 전달 받은거 확인
     // 꼭 Mutate state 사용하지 마라!!!!!
+    // store 값을 변경할 수 있는건 action을 보내서 변경할 수 있다!! -> 상태를 수정하는 것이 아니라 "새로운 값을 return 하는 것"이다
+    // Mutate state  예시 ) state가 배열이기 때문에 state.push(action.text) 와 같이 조작 No!!
     switch(action.type){
       case ADD_TODO:
-        return [];
+        const newTodoObj = {text:action.text, id:Date.now()}; 
+        return [...state, newTodoObj];  // ...스프레드 : 배열 안의 값을 return / , {text: 새로운 값} 추가 후 return
       case DELETE_TODO:
-        return [];
+        const cleaned = state.filter((toDo:any) => toDo.id !== action.id);
+        return cleaned;
       default:
         return state;
     }
   }
 
   // javascript 동작 이벤트 함수 -> redux store에 dispatch로 넣으면 건너뛸 수 있다.
+  // javascript 로 동작하면 동적으로 밖에 안됨. -> 상태관리하기 위해 dispatch, subscribe ...으로 관리 
   const createTodo = (todo:any) =>{
     const $item = document.createElement("li.list-item");
     $item.innerText = todo;
     $todoList?.appendChild($item);
   }
 
+  // 성능 최적화를 위해 return 하는 함수를 따로 생성
+  // action => return 하는 함수 
+  const addTodo = (text:string)=>{
+    return {
+      type:ADD_TODO, 
+      text
+    };
+  };
+
+  // dispatch 하는 용으로만 사용 -> 함수 생성 
+  const dispatchAddTodo =(text:string)=>{
+    store.dispatch(addTodo(text))
+  }
+
+  const deleteTodo = (id:number)=>{
+    return{
+      type:DELETE_TODO,
+      id
+    };
+  };
+
+  const dispatchDeleteTodo=(e:any)=>{
+    const id = parseInt(e.target.parentNode.id);
+    store.dispatch(deleteTodo(id))
+  }
+
+  // 화면 그리기 함수 
+  const paintTodos=()=>{
+    $todoList.innerHTML="";
+    
+    const toDos = store.getState();
+    toDos.forEach((toDo:any)=>{
+      const $li = document.createElement("li");
+      $li.id = toDo.id;
+      $li.innerText = toDo.text;
+
+      const $deleteButton = document.createElement("button");
+      $deleteButton.innerText="Delete";
+
+      $deleteButton.addEventListener("click", dispatchDeleteTodo); // 삭제 
+      $li.appendChild($deleteButton);
+      $todoList.appendChild($li);
+    })
+  }
+
   const onSubmit = (e:any)=>{
     e.preventDefault();
     const toDo = $input.value;
     $input.value = "";
-    // createTodo(toDo);
-    store.dispatch({type:ADD_TODO, text:toDo})
+    // createTodo(toDo); // createTodo 함수 보다 dispatch 를 사용하면 store 값을 업데이트할 수 있다.
+    // store.dispatch({type:ADD_TODO, text:toDo}) // dispatchAddTodo() 함수로 대체  
+    dispatchAddTodo(toDo)
   }
 
   const store = createStore(reducer);
+
+  // subscribe() -> store 변화 감지
+  // store.subscribe(()=>console.log(store.getState())) 
+  store.subscribe(paintTodos);
 
   $form.addEventListener("submit", onSubmit);
 }
